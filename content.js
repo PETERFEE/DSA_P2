@@ -3,6 +3,22 @@
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "scanEmail") {
+  }
+
+  // Extract only the email body for preview
+  if (request.action === "extractBodyOnly") {
+    let bodyText = '';
+    // Try Gmail's main message body selector first
+    const bodyEl = document.querySelector('div.a3s');
+    if (bodyEl) {
+      bodyText = bodyEl.innerText.trim();
+    } else {
+      // fallback to main area
+      const mainEl = document.querySelector('div[role="main"]');
+      bodyText = mainEl ? mainEl.innerText.trim() : '';
+    }
+    sendResponse({ body: bodyText });
+    return true;
     
     // --- This is a simple, example-only spam detection ---
     // --- Real spam detection is far more complex! ---
