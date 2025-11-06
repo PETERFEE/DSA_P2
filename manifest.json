@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Spam or Ham",
-  "version": "1.0",
+  "version": "1.5",
   "description": "Scans the currently open email in Gmail for common spam keywords.",
   "permissions": [
     "activeTab",
