@@ -36,6 +36,15 @@
       background-color: #6c757d;
       cursor: not-allowed;
     }
+    .preview-button {
+      background-color: #198754 !important;
+      margin-top: 8px;
+      font-size: 0.85rem !important;
+      padding: 8px !important;
+    }
+    .preview-button:hover {
+      background-color: #157347 !important;
+    }
     #result {
       font-size: 0.9rem;
       margin-top: 16px;
@@ -58,8 +67,6 @@
 <body>
   <h1>Gmail Spam Scan</h1>
   <button id="scanButton">Scan Current Email</button>
-  <div style="height:8px"></div>
-  <button id="previewBodyButton" style="display:none">Preview Body in New Tab</button>
   <div id="result"></div>
   <!-- Link to the JavaScript file -->
   <script src="popup.js"></script>

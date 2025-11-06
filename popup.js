@@ -1,41 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
   const scanButton = document.getElementById('scanButton');
   const resultDiv = document.getElementById('result');
-  const previewBodyButton = document.getElementById('previewBodyButton');
-  // Hide preview button by default; show after a scan
-  previewBodyButton.style.display = 'none';
-
-  previewBodyButton.addEventListener('click', async () => {
-    previewBodyButton.disabled = true;
-    previewBodyButton.textContent = "Loading...";
-    try {
-      let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (tab.url && tab.url.startsWith("https://mail.google.com/")) {
-        await chrome.scripting.executeScript({
-          target: { tabId: tab.id },
-          files: ['content.js']
-        });
-        // Ask content script for just the body
-        const response = await chrome.tabs.sendMessage(tab.id, { action: "extractBodyOnly" });
-        if (response && response.body) {
-          const blob = new Blob([
-            `<html><head><title>Email Body Preview</title></head><body style='font-family:sans-serif;white-space:pre-wrap;padding:2em;'><h2>Email Body</h2><div>${response.body.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div></body></html>`
-          ], { type: 'text/html' });
-          const url = URL.createObjectURL(blob);
-          chrome.tabs.create({ url });
-        } else {
-          alert('Could not extract email body.');
-        }
-      } else {
-        alert('Please open an email on mail.google.com to use this.');
-      }
-    } catch (e) {
-      alert('Error extracting body: ' + e.message);
-    } finally {
-      previewBodyButton.disabled = false;
-      previewBodyButton.textContent = "Preview Body in New Tab";
-    }
-  });
 
   scanButton.addEventListener('click', async () => {
     // Disable button and show loading
@@ -61,11 +26,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Send a message to the injected content script
         const response = await chrome.tabs.sendMessage(tab.id, { action: "scanEmail" });
 
-  // Display the response from the content script
-  displayResult(response);
-
-  // Reveal the preview button now that a scan was performed
-  previewBodyButton.style.display = 'block';
+        // Display the response from the content script
+        displayResult(response);
 
       } else {
         // Not on Gmail
@@ -82,13 +44,58 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  async function previewEmail() {
+    try {
+      let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      
+      if (tab.url && tab.url.startsWith("https://mail.google.com/")) {
+        const response = await chrome.tabs.sendMessage(tab.id, { action: "previewEmail" });
+        
+        if (response && response.success) {
+          // Open the preview URL in a new window
+          window.open(response.previewUrl, 'emailPreview', 'width=800,height=600');
+        } else {
+          alert(response.message || "Could not preview email. Make sure an email is open.");
+        }
+      }
+    } catch (error) {
+      console.error("Error previewing email:", error);
+      alert("Could not preview email. Make sure an email is fully open.");
+    }
+  }
+
   function displayResult(response) {
     resultDiv.style.display = 'block';
-    resultDiv.textContent = response.reason;
+    
+    // Clear previous content and classes
+    resultDiv.innerHTML = '';
+    resultDiv.className = '';
+    
+    // Create and append the result message
+    const messageDiv = document.createElement('div');
+    messageDiv.textContent = response.reason;
+    resultDiv.appendChild(messageDiv);
+    
+    // Add appropriate class based on scan result
     if (response.isSpam) {
       resultDiv.classList.add('spam');
     } else if (response.reason.startsWith("Looks safe")) {
       resultDiv.classList.add('safe');
+    }
+    
+    // Add Preview button if we successfully found an email
+    if (!response.reason.includes("Could not find email")) {
+      const previewButton = document.createElement('button');
+      previewButton.textContent = "Preview Email Body";
+      previewButton.className = 'preview-button';
+      previewButton.onclick = previewEmail;
+      
+      // Add some spacing
+      const spacer = document.createElement('div');
+      spacer.style.height = '10px';
+      
+      resultDiv.appendChild(spacer);
+      resultDiv.appendChild(previewButton);
     }
   }
 });

@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Gmail Spam Scanner",
+  "name": "Spam or Ham",
   "version": "1.0",
   "description": "Scans the currently open email in Gmail for common spam keywords.",
   "permissions": [
@@ -8,13 +8,19 @@
     "scripting"
   ],
   "host_permissions": [
-    "https://mail.google.com/"
-  
+    "https://mail.google.com/*"
   ],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
-      "16": "images/icon.png"
+      "16": "images/spam_ham.png",
+      "48": "images/spam_ham.png",
+      "128": "images/spam_ham.png"
     }
+  },
+  "icons": {
+    "16": "images/spam_ham.png",
+    "48": "images/spam_ham.png",
+    "128": "images/spam_ham.png"
   }
 }
