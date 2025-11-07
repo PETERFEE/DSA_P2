@@ -1,8 +1,6 @@
-
-
 // popup.js
 // This script responds to user action in popup window
-// It extracts text from an open Gmail email, computes a spam score
+// It extracts text from an open Gmail email, computes a spam score via Flask server
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -31,14 +29,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Get current active tab
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-    // If not Gmail, show message and exit
     if (!tab || !tab.url || !tab.url.startsWith("https://mail.google.com/")) {
       showMessage("Open an email on mail.google.com and try again.");
       resetButton();
       return;
     }
 
-    // Extract body text
+    // Extract body text from Gmail
     const injections = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       func: () => {
@@ -54,7 +51,6 @@ document.addEventListener('DOMContentLoaded', () => {
       },
     });
 
-    // Handle extraction results
     const injectionResult = injections && injections[0] && injections[0].result;
     if (!injectionResult || !injectionResult.success) {
       const reason = (injectionResult && injectionResult.message) || "Could not extract email text.";
@@ -66,38 +62,35 @@ document.addEventListener('DOMContentLoaded', () => {
     const cleanedText = injectionResult.cleaned || "";
     lastExtractedText = cleanedText;
 
-    // Default spam score calculation
-    const spamResult = computeSpamScore(cleanedText);
+    // --- Call Flask server ---
+    try {
+      const response = await fetch('http://127.0.0.1:5000/classify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: cleanedText,
+          nb_conf: 0.5,  // default confidence
+          has_name: cleanedText.includes("Hi") // simple heuristic
+        })
+      });
 
-    // Show success message with preview and algorithm options
-    showMessage(`Preview ready. Spam score: ${spamResult.score}`, true);
-    resetButton();
+      if (!response.ok) throw new Error(`Server error: ${response.status}`);
+
+      const result = await response.json();
+
+      showMessage(`Preview ready. Spam score: ${result.spam_score}`, true);
+      resetButton();
+    } catch (error) {
+      console.error('Fetch Error:', error);
+      showMessage('Error: Could not connect to Flask server. Make sure server is running.');
+      resetButton();
+    }
   });
 
-
-  // Helper: re-enable button after scan
   function resetButton() {
     scanButton.disabled = false;
     scanButton.textContent = "Scan Current Email";
   }
-
-  // Placeholder spam score function
-  function computeSpamScore(text) {
-    return { score: 0, details: [] };
-  }
-
-
-  // 1. Triple Pass algorithm
-  function computeTriplePassScore(text) {
-return 0;
-  }
-
-  // 2. The Tree algorithm
-  function computeTreeScore(text) {
-   return 0; 
-  }
-
-  // ------------------------------------
 
   // Display result message in popup
   function showMessage(msg, includePreviewBtn = false) {
@@ -109,7 +102,6 @@ return 0;
     messageDiv.textContent = msg;
     resultDiv.appendChild(messageDiv);
 
-    // Optionally include preview button + algorithm buttons
     if (includePreviewBtn) {
       const previewBtn = document.createElement('button');
       previewBtn.textContent = "View Preview";
@@ -118,20 +110,6 @@ return 0;
         if (lastExtractedText) openPreviewWindow(lastExtractedText);
       });
       resultDiv.appendChild(previewBtn);
-
-      // Add the two new buttons
-      triplePassBtn.addEventListener('click', () => {
-        if (lastExtractedText) {
-          const result = computeTriplePassScore(lastExtractedText);
-          showMessage(`Triple Pass Score: ${result.score}`, true);
-        }
-      });
-      treeBtn.addEventListener('click', () => {
-        if (lastExtractedText) {
-          const result = computeTreeScore(lastExtractedText);
-          showMessage(`The Tree Score: ${result.score}`, true);
-        }
-      });
 
       resultDiv.appendChild(triplePassBtn);
       resultDiv.appendChild(treeBtn);
@@ -161,12 +139,6 @@ return 0;
     window.open(url, 'emailPreview', 'width=900,height=700');
   }
 
-
-
-
-
-  
-  // Escape HTML entities for safe preview
   function escapeHtml(s) {
     if (!s) return "";
     return s.replace(/&/g, "&amp;")

@@ -1,15 +1,10 @@
 {
   "manifest_version": 3,
   "name": "Spam or Ham",
-  "version": "1.12",
-  "description": "Scans the currently open email in Gmail for common spam keywords.",
-  "permissions": [
-    "activeTab",
-    "scripting"
-  ],
-  "host_permissions": [
-    "https://mail.google.com/*"
-  ],
+  "version": "1.14",
+  "description": "Scans the currently open email in Gmail for common spam keywords via Flask.",
+  "permissions": ["activeTab","scripting"],
+  "host_permissions": ["https://mail.google.com/*"],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
