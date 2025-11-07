@@ -1,8 +1,10 @@
+# spam_classifier.py
 import re
 from typing import Dict, Tuple
 from dataclasses import dataclass
+import time
 
-@dataclass()
+@dataclass
 class EmailFeatures:
     nb_confidence: float
     message_length: int
@@ -17,8 +19,8 @@ class EmailFeatures:
     recipient_name_present: bool
     excessive_punctuation: bool
 
-
 class SpamDecisionTree:
+
     def __init__(self):
         self.HIGH_CONFIDENCE_THRESHOLD = 0.80
         self.MEDIUM_CONFIDENCE_THRESHOLD = 0.60
@@ -29,27 +31,31 @@ class SpamDecisionTree:
             'limited time', 'expire', 'hurry', "don't miss",
             'last chance', 'today only'
         ]
+
         self.MONEY_KEYWORDS = [
             'free money', 'cash bonus', 'prize', 'winner', 'claim',
             'million dollars', '$$$', 'income', 'earn money',
             'investment opportunity', 'risk-free', 'guarantee'
         ]
+
         self.SUSPICIOUS_PHRASES = [
             'click here', 'verify your account', 'confirm your identity',
             'update your information', 'suspended account', 'unusual activity',
             'dear customer', 'dear user', "congratulations you've won"
         ]
 
-    def extract_features(self, email_text: str, nb_confidence: float, has_recipient_name: bool = False) -> EmailFeatures:
+    def extract_features(self, email_text: str, nb_confidence: float,
+                         has_recipient_name: bool = False) -> EmailFeatures:
         text_lower = email_text.lower()
         text_length = len(email_text)
 
         capital_count = sum(1 for c in email_text if c.isupper())
-        symbol_count = sum(1 for c in email_text if c in '!@#$%^&*()_+={}[]|\\:;"<>?,.')
-        number_count = sum(1 for c in email_text if c.isdigit())
-
         capital_ratio = capital_count / text_length if text_length > 0 else 0
+
+        symbol_count = sum(1 for c in email_text if c in '!@#$%^&*()_+={}[]|\\:;"<>?,.')
         symbol_ratio = symbol_count / text_length if text_length > 0 else 0
+
+        number_count = sum(1 for c in email_text if c.isdigit())
         number_ratio = number_count / text_length if text_length > 0 else 0
 
         url_pattern = r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
@@ -59,6 +65,7 @@ class SpamDecisionTree:
         urgent_count = sum(1 for word in self.URGENT_WORDS if word in text_lower)
         money_count = sum(1 for word in self.MONEY_KEYWORDS if word in text_lower)
         suspicious_count = sum(1 for phrase in self.SUSPICIOUS_PHRASES if phrase in text_lower)
+
         excessive_punct = bool(re.search(r'[!?]{3,}', email_text))
 
         return EmailFeatures(
@@ -76,99 +83,98 @@ class SpamDecisionTree:
             excessive_punctuation=excessive_punct
         )
 
-    def calculate_spam_score(self, f: EmailFeatures) -> float:
+    def calculate_spam_score(self, features: EmailFeatures) -> float:
         score = 0.0
-        w = {'nb_base': 0.40, 'keywords': 0.20, 'formatting': 0.15, 'links': 0.15, 'personalization': 0.10}
-        score += f.nb_confidence * w['nb_base']
+        weights = {'nb_base': 0.40, 'keywords': 0.20, 'formatting': 0.15,
+                   'links': 0.15, 'personalization': 0.10}
 
-        keyword_score = min(
-            (f.urgent_words_count * 0.2) + (f.money_keywords_count * 0.25) + (f.suspicious_phrases_count * 0.3), 1.0
-        )
-        score += keyword_score * w['keywords']
+        score += features.nb_confidence * weights['nb_base']
+
+        keyword_score = 0
+        if features.urgent_words_count > 0:
+            keyword_score += min(features.urgent_words_count * 0.2, 0.4)
+        if features.money_keywords_count > 0:
+            keyword_score += min(features.money_keywords_count * 0.25, 0.4)
+        if features.suspicious_phrases_count > 0:
+            keyword_score += min(features.suspicious_phrases_count * 0.3, 0.5)
+        score += min(keyword_score, 1.0) * weights['keywords']
 
         format_score = 0
-        if f.capital_ratio > 0.3: format_score += 0.4
-        if f.symbol_ratio > 0.15: format_score += 0.3
-        if f.excessive_punctuation: format_score += 0.3
-        score += min(format_score, 1.0) * w['formatting']
+        if features.capital_ratio > 0.3:
+            format_score += 0.4
+        if features.symbol_ratio > 0.15:
+            format_score += 0.3
+        if features.excessive_punctuation:
+            format_score += 0.3
+        score += min(format_score, 1.0) * weights['formatting']
 
         link_score = 0
-        if f.url_count > 3: link_score += 0.6
-        elif f.url_count > 0: link_score += 0.3
-        if f.has_external_links and f.urgent_words_count > 0: link_score += 0.4
-        score += min(link_score, 1.0) * w['links']
+        if features.url_count > 3:
+            link_score += 0.6
+        elif features.url_count > 0:
+            link_score += 0.3
+        if features.has_external_links and features.urgent_words_count > 0:
+            link_score += 0.4
+        score += min(link_score, 1.0) * weights['links']
 
-        if not f.recipient_name_present:
-            score += (0.7 if f.suspicious_phrases_count > 0 else 0.3) * w['personalization']
+        if not features.recipient_name_present:
+            if features.suspicious_phrases_count > 0:
+                score += 0.7 * weights['personalization']
+            else:
+                score += 0.3 * weights['personalization']
 
         return min(score, 1.0)
 
-    def classify(self, text: str, nb_conf: float, has_name: bool = False) -> Tuple[str, float, Dict]:
-        f = self.extract_features(text, nb_conf, has_name)
-        s = self.calculate_spam_score(f)
-        r = {'nb_confidence': nb_conf, 'spam_score': s, 'decision_path': []}
+    def classify(self, email_text: str, nb_confidence: float,
+                 has_recipient_name: bool = False) -> Tuple[str, float, Dict]:
+        """
+        Accepts a Naive Bayes confidence score from predict.py
+        and generates a final spam classification, score, and reasoning.
+        """
+        # Ensure nb_confidence is a Python float
+        nb_confidence = float(nb_confidence)
 
-        if nb_conf >= 0.8:
-            r['decision_path'].append('High NB confidence')
-            if s >= 0.75:
-                r['decision_path'].append('High spam score confirms')
-                return 'spam', 0.95, r
-            elif s < 0.4:
-                r['decision_path'].append('Low spam score contradicts')
-                return 'ham', 0.70, r
-            return 'spam', 0.85, r
+        features = self.extract_features(email_text, nb_confidence, has_recipient_name)
+        spam_score = self.calculate_spam_score(features)
 
-        elif nb_conf >= 0.6:
-            r['decision_path'].append('Medium-high NB confidence')
-            if (f.urgent_words_count + f.money_keywords_count + f.suspicious_phrases_count) >= 3:
-                r['decision_path'].append('Multiple spam keywords')
-                return 'spam', 0.80, r
-            if s >= 0.65:
-                r['decision_path'].append('Spam score supports classification')
-                return 'spam', 0.75, r
-            elif s < 0.45:
-                r['decision_path'].append('Spam score suggests ham')
-                return 'ham', 0.65, r
-            if f.has_external_links and not f.recipient_name_present:
-                r['decision_path'].append('Generic message with links')
-                return 'spam', 0.70, r
-            return 'spam', 0.60, r
+        reasoning = {
+            'nb_confidence': nb_confidence,
+            'spam_score': spam_score,
+            'features': features,
+            'decision_path': []
+        }
 
-        elif nb_conf >= 0.3:
-            r['decision_path'].append('Low-medium NB confidence')
-            if s >= 0.75:
-                r['decision_path'].append('High spam score detected')
-                return 'spam', 0.70, r
-            if f.suspicious_phrases_count >= 2 and f.has_external_links:
-                r['decision_path'].append('Phishing pattern detected')
-                return 'spam', 0.75, r
-            count = sum([
-                f.urgent_words_count > 0, f.money_keywords_count > 0,
-                f.capital_ratio > 0.25, f.excessive_punctuation, not f.recipient_name_present
-            ])
-            if count >= 3:
-                r['decision_path'].append(f'{count} spam indicators')
-                return 'spam', 0.65, r
-            elif count <= 1:
-                r['decision_path'].append(f'Only {count} spam indicators')
-                return 'ham', 0.60, r
-            return ('spam' if s >= 0.55 else 'ham'), 0.55, r
-
+        # Simple rule-based decision path
+        if nb_confidence >= self.HIGH_CONFIDENCE_THRESHOLD:
+            reasoning['decision_path'].append('High NB confidence')
+            if spam_score >= 0.75:
+                reasoning['decision_path'].append('High spam score confirms')
+                return 'spam', spam_score, reasoning
+            else:
+                reasoning['decision_path'].append('Moderate spam score')
+                return 'spam', spam_score, reasoning
+        elif nb_confidence >= self.MEDIUM_CONFIDENCE_THRESHOLD:
+            reasoning['decision_path'].append('Medium NB confidence')
+            if spam_score >= 0.6:
+                reasoning['decision_path'].append('Spam score supports spam')
+                return 'spam', spam_score, reasoning
+            else:
+                reasoning['decision_path'].append('Spam score low - likely ham')
+                return 'ham', spam_score, reasoning
         else:
-            r['decision_path'].append('Low NB confidence')
-            if s >= 0.80:
-                r['decision_path'].append('Very high spam score overrides NB')
-                return 'spam', 0.65, r
-            if s < 0.35:
-                r['decision_path'].append('Low spam score - likely ham')
-                return 'ham', 0.75, r
-            if f.suspicious_phrases_count >= 2:
-                r['decision_path'].append('Multiple suspicious phrases')
-                return 'spam', 0.60, r
-            return 'ham', 0.70, r
+            reasoning['decision_path'].append('Low NB confidence')
+            if spam_score >= 0.7:
+                reasoning['decision_path'].append('Spam score high - classify as spam')
+                return 'spam', spam_score, reasoning
+            else:
+                reasoning['decision_path'].append('Spam score low - classify as ham')
+                return 'ham', spam_score, reasoning
 
-
-#  Helper for Flask
-def classify_spam(email_text: str, nb_confidence: float, has_recipient_name: bool):
+# Utility function to be called from server.py
+def classify_email(email_text: str, nb_confidence: float, has_name: bool = False):
+    start_time = time.perf_counter()  # Start the timer
     classifier = SpamDecisionTree()
-    return classifier.classify(email_text, nb_confidence, has_recipient_name)
+    classification, spam_score, reasoning = classifier.classify(email_text, nb_confidence, has_recipient_name=has_name)
+    end_time = time.perf_counter()  # Stop the timer
+    elapsed_time = end_time - start_time
+    return classification, spam_score, reasoning, elapsed_time

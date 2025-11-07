@@ -1,35 +1,45 @@
-# server.py
 from flask import Flask, request, jsonify
-from flask_cors import CORS
-from spam_classifier import SpamDecisionTree  # Your Python spam logic
+from flask_cors import CORS  
+from predict import naive_bayes
+from spam_classifier import classify_email
 
 app = Flask(__name__)
-CORS(app)  # Allow cross-origin requests from your Chrome extension
+CORS(app)  # <-- enable CORS for all routes
 
-classifier = SpamDecisionTree()
+@app.route('/')
+def home():
+    return "Spam Classifier API is running!"
 
 @app.route('/classify', methods=['POST'])
-def classify_email():
+def classify():
     try:
-        data = request.get_json()
-        email_text = data.get('text', '')
-        nb_conf = data.get('nb_conf', 0.5)
+        data = request.json
+        email_text = data.get('email', '')
         has_name = data.get('has_name', False)
 
         if not email_text:
             return jsonify({'error': 'No email text provided'}), 400
 
-        result, confidence, reasoning = classifier.classify(email_text, nb_conf, has_name)
+        # Step 1: Get Naive Bayes prediction + confidence
+        nb_label, nb_confidence = naive_bayes(email_text)
 
-        return jsonify({
-            'classification': result,
-            'confidence': confidence,
-            'spam_score': reasoning.get('spam_score'),
-            'reasoning_path': reasoning.get('decision_path')
-        })
+        # Step 2: Pass the confidence to SpamDecisionTree
+        classification, spam_score, reasoning , Complie_time= classify_email(email_text, nb_confidence, has_name)
+
+        # Step 3: Return final JSON report
+        response = {
+            'classification': classification,
+            'spam_score': spam_score,
+            'nb_prediction': 'spam' if nb_label == 1 else 'ham',
+            'nb_confidence': nb_confidence,
+            'reasoning': reasoning,
+            'Complie_time': Complie_time
+        }
+        return jsonify(response)
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-if __name__ == "__main__":
-    print("Starting spam analysis server at http://127.0.0.1:5000")
-    app.run(port=5000, debug=True)
+if __name__ == '__main__':
+    print("✅ Flask server running at http://127.0.0.1:5000")
+    app.run(debug=True)
