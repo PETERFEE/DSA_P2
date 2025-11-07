@@ -1,3 +1,5 @@
+
+
 // popup.js
 // This script responds to user action in popup window
 // It extracts text from an open Gmail email, computes a spam score
@@ -7,6 +9,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const scanButton = document.getElementById('scanButton');
   const resultDiv = document.getElementById('result');
   let lastExtractedText = "";
+
+  // -triple Pass and The Tree buttons
+  const triplePassBtn = document.createElement('button');
+  triplePassBtn.textContent = "Triple Pass";
+  triplePassBtn.style.marginTop = "8px";
+
+  const treeBtn = document.createElement('button');
+  treeBtn.textContent = "The Tree";
+  treeBtn.style.marginTop = "8px";
+  // --------------------
 
   // When user clicks "Scan Current Email"
   scanButton.addEventListener('click', async () => {
@@ -26,61 +38,41 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-
-    // Extract body text    This is a Chrome Extensions API call that injects and runs a JavaScript function
+    // Extract body text
     const injections = await chrome.scripting.executeScript({
-      target: { tabId: tab.id }, // target choose which tab to run the script 
-                                 // tab id is Gmail
-
-      //Defines a function that will be executed inside Gmail’s page context
+      target: { tabId: tab.id },
       func: () => {
-        // Try Gmail's message body div
-        //Searches Gmail’s HTML for a <div> that usually holds the email content.
-        //Gmail uses dynamic CSS classes; .a3s is one of them for message content.
-        const emailDiv = document.querySelector('div[role="main"] div.a3s') // in case first way won't work
-                      || document.querySelector('div[role="main"]'); // it tries a broader selector (just the main content area).
-
-        // no email body was found     
+        const emailDiv = document.querySelector('div[role="main"] div.a3s')
+                      || document.querySelector('div[role="main"]');
         if (!emailDiv) {
           return { success: false, message: "Could not find an open email. Make sure an email is selected." };
         }
-
-        //read the extacted email body 
         let text = emailDiv.innerText || "";
-
-       // clean that extracted character 
-        text = text.replace(/[^\x09\x0A\x0D\x20-\x7E\u00A0-\u00FF]/g, "");  // remove weird chars
-        text = text.replace(/\s{3,}/g, "\n\n").trim();  // collapse extra spaces
-
+        text = text.replace(/[^\x09\x0A\x0D\x20-\x7E\u00A0-\u00FF]/g, "");
+        text = text.replace(/\s{3,}/g, "\n\n").trim();
         return { success: true, cleaned: text };
       },
-    }); // Closes the call to chrome.scripting.executeScript()
+    });
 
-
-    // Handle extraction results 
+    // Handle extraction results
     const injectionResult = injections && injections[0] && injections[0].result;
-    // handle failure 
     if (!injectionResult || !injectionResult.success) {
       const reason = (injectionResult && injectionResult.message) || "Could not extract email text.";
-      showMessage(reason); 
-      resetButton(); // re-enables the Scan button (so the user can try again).
+      showMessage(reason);
+      resetButton();
       return;
     }
-    
-    //Stores the cleaned email text for further processing or preview.
+
     const cleanedText = injectionResult.cleaned || "";
     lastExtractedText = cleanedText;
 
-    // Compute spam score   need to motify in the future 
+    // Default spam score calculation
     const spamResult = computeSpamScore(cleanedText);
 
-    // Show success message with preview option
+    // Show success message with preview and algorithm options
     showMessage(`Preview ready. Spam score: ${spamResult.score}`, true);
     resetButton();
   });
-
-
-
 
 
   // Helper: re-enable button after scan
@@ -89,12 +81,23 @@ document.addEventListener('DOMContentLoaded', () => {
     scanButton.textContent = "Scan Current Email";
   }
 
-
   // Placeholder spam score function
   function computeSpamScore(text) {
     return { score: 0, details: [] };
   }
 
+
+  // 1. Triple Pass algorithm
+  function computeTriplePassScore(text) {
+return 0;
+  }
+
+  // 2. The Tree algorithm
+  function computeTreeScore(text) {
+   return 0; 
+  }
+
+  // ------------------------------------
 
   // Display result message in popup
   function showMessage(msg, includePreviewBtn = false) {
@@ -106,7 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
     messageDiv.textContent = msg;
     resultDiv.appendChild(messageDiv);
 
-    // Optionally include preview button
+    // Optionally include preview button + algorithm buttons
     if (includePreviewBtn) {
       const previewBtn = document.createElement('button');
       previewBtn.textContent = "View Preview";
@@ -115,9 +118,25 @@ document.addEventListener('DOMContentLoaded', () => {
         if (lastExtractedText) openPreviewWindow(lastExtractedText);
       });
       resultDiv.appendChild(previewBtn);
+
+      // Add the two new buttons
+      triplePassBtn.addEventListener('click', () => {
+        if (lastExtractedText) {
+          const result = computeTriplePassScore(lastExtractedText);
+          showMessage(`Triple Pass Score: ${result.score}`, true);
+        }
+      });
+      treeBtn.addEventListener('click', () => {
+        if (lastExtractedText) {
+          const result = computeTreeScore(lastExtractedText);
+          showMessage(`The Tree Score: ${result.score}`, true);
+        }
+      });
+
+      resultDiv.appendChild(triplePassBtn);
+      resultDiv.appendChild(treeBtn);
     }
   }
-
 
   // Open new window to show extracted email text
   function openPreviewWindow(text) {
@@ -144,6 +163,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
+
+
+  
   // Escape HTML entities for safe preview
   function escapeHtml(s) {
     if (!s) return "";
