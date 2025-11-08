@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, make_response,jsonify
 from flask_cors import CORS  
 from predict import naive_bayes
 from decision_tree import classify_email
@@ -21,14 +21,10 @@ def classify():
         if not email_text:
             return jsonify({'error': 'No email text provided'}), 400
 
-        # Step 1: Get Naive Bayes prediction + confidence
         nb_label, nb_confidence = naive_bayes(email_text)
-
-        # Step 2: Run both algorithms
         classification, spam_score, reasoning, compile_time = classify_email(email_text, nb_confidence)
         classification2, spam_score2, compile_time2 = ruleFilter(email_text, nb_confidence)
 
-        # Step 3: Return both results in a single JSON
         response = {
             'decision_tree': {
                 'classification': classification,
@@ -45,7 +41,9 @@ def classify():
             'nb_confidence': nb_confidence
         }
 
-        return jsonify(response)
+        resp = make_response(jsonify(response))
+        resp.headers["Content-Type"] = "application/json; charset=utf-8"
+        return resp
 
     except Exception as e:
         print("⚠️ ERROR during /classify:", e)
