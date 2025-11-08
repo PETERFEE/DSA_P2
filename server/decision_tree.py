@@ -46,24 +46,18 @@ class SpamDecisionTree:
     def extract_features(self, email_text: str, nb_confidence: float) -> EmailFeatures:
         text_lower = email_text.lower()
         text_length = len(email_text)
-
         capital_count = sum(1 for c in email_text if c.isupper())
         capital_ratio = capital_count / text_length if text_length > 0 else 0
-
         symbol_count = sum(1 for c in email_text if c in '!@#$%^&*()_+={}[]|\\:;"<>?,.')
         symbol_ratio = symbol_count / text_length if text_length > 0 else 0
-
         number_count = sum(1 for c in email_text if c.isdigit())
         number_ratio = number_count / text_length if text_length > 0 else 0
-
         url_pattern = r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
         url_count = len(re.findall(url_pattern, email_text))
         has_external_links = url_count > 0 or 'click here' in text_lower
-
         urgent_count = sum(1 for word in self.URGENT_WORDS if word in text_lower)
         money_count = sum(1 for word in self.MONEY_KEYWORDS if word in text_lower)
         suspicious_count = sum(1 for phrase in self.SUSPICIOUS_PHRASES if phrase in text_lower)
-
         excessive_punct = bool(re.search(r'[!?]{3,}', email_text))
 
         return EmailFeatures(
@@ -90,7 +84,6 @@ class SpamDecisionTree:
         }
 
         score += features.nb_confidence * weights['nb_base']
-
         keyword_score = 0
         if features.urgent_words_count > 0:
             keyword_score += min(features.urgent_words_count * 0.2, 0.4)
@@ -135,7 +128,7 @@ class SpamDecisionTree:
             if spam_score >= 0.75:
                 reasoning['decision_path'].append('High spam score confirms')
                 return 'spam', reasoning
-            elif spam_score < 0.4:
+            elif spam_score < 0.50:
                 reasoning['decision_path'].append('Low spam score contradicts')
                 return 'ham', reasoning
             return 'spam', reasoning
@@ -149,7 +142,7 @@ class SpamDecisionTree:
             if spam_score >= 0.65:
                 reasoning['decision_path'].append('Spam score supports classification')
                 return 'spam', reasoning
-            elif spam_score < 0.45:
+            elif spam_score < 0.50:
                 reasoning['decision_path'].append('Spam score suggests ham')
                 return 'ham', reasoning
             if features.has_external_links:
@@ -165,21 +158,18 @@ class SpamDecisionTree:
             if (features.suspicious_phrases_count >= 2 and features.has_external_links):
                 reasoning['decision_path'].append('Phishing pattern detected')
                 return 'spam', reasoning
-
             indicator_count = sum([
                 features.urgent_words_count > 0,
                 features.money_keywords_count > 0,
                 features.capital_ratio > 0.25,
                 features.excessive_punctuation
             ])
-
             if indicator_count >= 3:
                 reasoning['decision_path'].append(f'{indicator_count} spam indicators present')
                 return 'spam', reasoning
             elif indicator_count <= 1:
                 reasoning['decision_path'].append(f'Only {indicator_count} spam indicators')
                 return 'ham', reasoning
-
             if spam_score >= 0.55:
                 return 'spam', reasoning
             else:
@@ -190,7 +180,7 @@ class SpamDecisionTree:
             if spam_score >= 0.80:
                 reasoning['decision_path'].append('Very high spam score overrides NB')
                 return 'spam', reasoning
-            if spam_score < 0.35:
+            if spam_score < 0.50:
                 reasoning['decision_path'].append('Low spam score - likely ham')
                 return 'ham', reasoning
             if features.suspicious_phrases_count >= 2:
