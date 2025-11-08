@@ -32,8 +32,8 @@ def ruleFilter(body, confidence):
         elif url.split('.')[-1].lower() in ('xyz', 'top', 'tk', 'pw', 'tk', 'ga', 'ml', 'work', 'download', 'win', 'zip', 'bar', 'party', 'info', 'ru', 'ws', 'cm'):
             spamProbability += 0.25
 
-    spamWords = {"urgent": 0, "sale": 0, "win": 0, "trial": 0, "guaranteed": 0, "cash": 0, "act": 0, "claim": 0, "hurry": 0, "verify": 0, "congratulations": 0, "income": 0, "investment": 0}
-    spamWeight = {"urgent": 3, "sale": 2, "win": 3, "trial": 1, "guaranteed": 2, "cash": 2, "act": 2, "claim": 3, "hurry": 4, "verify": 1, "congratulations": 1, "income": 1, "investment": 2}
+    spamWords = {"urgent": 0, "sale": 0, "win": 0, "trial": 0, "guaranteed": 0, "cash": 0, "act": 0, "claim": 0, "hurry": 0, "verify": 0, "congratulations": 0, "income": 0, "investment": 0, "limited": 0}
+    spamWeight = {"urgent": 3, "sale": 2, "win": 3, "trial": 1, "guaranteed": 2, "cash": 2, "act": 2, "claim": 3, "hurry": 4, "verify": 1, "congratulations": 1, "income": 1, "investment": 2, "limited": 2}
     cumulative = 0
     maxWeight = sum(spamWeight.values())
 
@@ -67,7 +67,7 @@ def ruleFilter(body, confidence):
                    "lose weight", "burn fat", "anti aging", "improve performance", "limited supply",
                    "upgrade now", "free download", "contact support", "final notice", "last chance",
                    "immediate action", "account suspended", "payment required", "critical alert",
-                   "important message", "click here"]
+                   "important message", "click here", "miss your chance"]
     occurrence = 0
     scale = 0.25 / math.log1p(1)
 
