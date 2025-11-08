@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Spam Scanner</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f8f9fa;
+      padding: 16px;
+      width: 320px;
+    }
+    h2 {
+      margin-bottom: 10px;
+      color: #333;
+    }
+    textarea {
+      width: 100%;
+      height: 120px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 8px;
+      font-size: 14px;
+    }
+    button {
+      margin-top: 10px;
+      width: 100%;
+      padding: 10px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 15px;
+    }
+    #result {
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 6px;
+      display: none;
+    }
+    .spam {
+      background-color: #ffdddd;
+      color: #d93025;
+    }
+    .safe {
+      background-color: #ddffdd;
+      color: #0a8a0a;
+    }
+    #reasoning {
+      margin-top: 8px;
+      font-size: 13px;
+      color: #444;
+      background-color: #fff;
+      border-left: 3px solid #007bff;
+      padding: 8px;
+      border-radius: 4px;
+      display: none;
+    }
+    #compile-time {
+      margin-top: 6px;
+      font-size: 12px;
+      color: #555;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h2>Spam Scanner</h2>
+  <textarea id="text-to-check" placeholder="Paste email text here..."></textarea>
+  <button id="scanButton">Scan Email</button>
+    <div id="results-container" style="margin-top: 12px;">
+    <!-- Decision Tree Result -->
+    <div id="decision-tree-section" style="display:none;">
+      <h4>Decision Tree Result</h4>
+      <div id="dt-result" class=""></div>
+      <div id="dt-reasoning"></div>
+      <div id="dt-compile-time"></div>
+    </div>
+
+    <!-- Rule Filter Result -->
+    <div id="rule-filter-section" style="display:none; margin-top:12px;">
+      <h4>Rule Filter Result</h4>
+      <div id="rf-result" class=""></div>
+      <div id="rf-compile-time"></div>
+    </div>
+  </div>
+
+
+  <script src="popup.js"></script>
+</body>
+</html>
