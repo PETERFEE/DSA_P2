@@ -16,7 +16,6 @@ class EmailFeatures:
     money_keywords_count: int
     suspicious_phrases_count: int
     has_external_links: bool
-    recipient_name_present: bool
     excessive_punctuation: bool
 
 class SpamDecisionTree:
@@ -44,8 +43,7 @@ class SpamDecisionTree:
             'dear customer', 'dear user', "congratulations you've won"
         ]
 
-    def extract_features(self, email_text: str, nb_confidence: float,
-                         has_recipient_name: bool = False) -> EmailFeatures:
+    def extract_features(self, email_text: str, nb_confidence: float) -> EmailFeatures:
         text_lower = email_text.lower()
         text_length = len(email_text)
 
@@ -79,14 +77,17 @@ class SpamDecisionTree:
             money_keywords_count=money_count,
             suspicious_phrases_count=suspicious_count,
             has_external_links=has_external_links,
-            recipient_name_present=has_recipient_name,
             excessive_punctuation=excessive_punct
         )
 
     def calculate_spam_score(self, features: EmailFeatures) -> float:
         score = 0.0
-        weights = {'nb_base': 0.40, 'keywords': 0.20, 'formatting': 0.15,
-                   'links': 0.15, 'personalization': 0.10}
+        weights = {
+            'nb_base': 0.45,
+            'keywords': 0.25,
+            'formatting': 0.15,
+            'links': 0.15
+        }
 
         score += features.nb_confidence * weights['nb_base']
 
@@ -117,64 +118,96 @@ class SpamDecisionTree:
             link_score += 0.4
         score += min(link_score, 1.0) * weights['links']
 
-        if not features.recipient_name_present:
-            if features.suspicious_phrases_count > 0:
-                score += 0.7 * weights['personalization']
-            else:
-                score += 0.3 * weights['personalization']
-
         return min(score, 1.0)
 
-    def classify(self, email_text: str, nb_confidence: float,
-                 has_recipient_name: bool = False) -> Tuple[str, float, Dict]:
-        """
-        Accepts a Naive Bayes confidence score from predict.py
-        and generates a final spam classification, score, and reasoning.
-        """
-        # Ensure nb_confidence is a Python float
-        nb_confidence = float(nb_confidence)
-
-        features = self.extract_features(email_text, nb_confidence, has_recipient_name)
+    def classify(self, email_text: str, nb_confidence: float) -> Tuple[str, Dict]:
+        features = self.extract_features(email_text, nb_confidence)
         spam_score = self.calculate_spam_score(features)
 
         reasoning = {
             'nb_confidence': nb_confidence,
             'spam_score': spam_score,
-            'features': features,
             'decision_path': []
         }
 
-        # Simple rule-based decision path
         if nb_confidence >= self.HIGH_CONFIDENCE_THRESHOLD:
             reasoning['decision_path'].append('High NB confidence')
             if spam_score >= 0.75:
                 reasoning['decision_path'].append('High spam score confirms')
-                return 'spam', spam_score, reasoning
-            else:
-                reasoning['decision_path'].append('Moderate spam score')
-                return 'spam', spam_score, reasoning
+                return 'spam', reasoning
+            elif spam_score < 0.4:
+                reasoning['decision_path'].append('Low spam score contradicts')
+                return 'ham', reasoning
+            return 'spam', reasoning
+
         elif nb_confidence >= self.MEDIUM_CONFIDENCE_THRESHOLD:
             reasoning['decision_path'].append('Medium NB confidence')
-            if spam_score >= 0.6:
-                reasoning['decision_path'].append('Spam score supports spam')
-                return 'spam', spam_score, reasoning
+            if (features.urgent_words_count + features.money_keywords_count +
+                features.suspicious_phrases_count) >= 3:
+                reasoning['decision_path'].append('Multiple spam keywords detected')
+                return 'spam', reasoning
+            if spam_score >= 0.65:
+                reasoning['decision_path'].append('Spam score supports classification')
+                return 'spam', reasoning
+            elif spam_score < 0.45:
+                reasoning['decision_path'].append('Spam score suggests ham')
+                return 'ham', reasoning
+            if features.has_external_links:
+                reasoning['decision_path'].append('External links present - likely spam')
+                return 'spam', reasoning
+            return 'spam', reasoning
+
+        elif nb_confidence >= self.LOW_CONFIDENCE_THRESHOLD:
+            reasoning['decision_path'].append('Low NB confidence - rely on features')
+            if spam_score >= 0.75:
+                reasoning['decision_path'].append('High spam score detected')
+                return 'spam', reasoning
+            if (features.suspicious_phrases_count >= 2 and features.has_external_links):
+                reasoning['decision_path'].append('Phishing pattern detected')
+                return 'spam', reasoning
+
+            indicator_count = sum([
+                features.urgent_words_count > 0,
+                features.money_keywords_count > 0,
+                features.capital_ratio > 0.25,
+                features.excessive_punctuation
+            ])
+
+            if indicator_count >= 3:
+                reasoning['decision_path'].append(f'{indicator_count} spam indicators present')
+                return 'spam', reasoning
+            elif indicator_count <= 1:
+                reasoning['decision_path'].append(f'Only {indicator_count} spam indicators')
+                return 'ham', reasoning
+
+            if spam_score >= 0.55:
+                return 'spam', reasoning
             else:
-                reasoning['decision_path'].append('Spam score low - likely ham')
-                return 'ham', spam_score, reasoning
+                return 'ham', reasoning
+
         else:
-            reasoning['decision_path'].append('Low NB confidence')
-            if spam_score >= 0.7:
-                reasoning['decision_path'].append('Spam score high - classify as spam')
-                return 'spam', spam_score, reasoning
-            else:
-                reasoning['decision_path'].append('Spam score low - classify as ham')
-                return 'ham', spam_score, reasoning
+            reasoning['decision_path'].append('Very low NB confidence - feature-driven')
+            if spam_score >= 0.80:
+                reasoning['decision_path'].append('Very high spam score overrides NB')
+                return 'spam', reasoning
+            if spam_score < 0.35:
+                reasoning['decision_path'].append('Low spam score - likely ham')
+                return 'ham', reasoning
+            if features.suspicious_phrases_count >= 2:
+                reasoning['decision_path'].append('Multiple suspicious phrases')
+                return 'spam', reasoning
+            return 'ham', reasoning
+
+
 
 # Utility function to be called from server.py
-def classify_email(email_text: str, nb_confidence: float, has_name: bool = False):
+def classify_email(email_text: str, nb_confidence: float) -> Tuple[str, float, Dict, float]:
     start_time = time.perf_counter()  # Start the timer
+
     classifier = SpamDecisionTree()
-    classification, spam_score, reasoning = classifier.classify(email_text, nb_confidence, has_recipient_name=has_name)
+    EmailFeatures = classifier.extract_features(email_text, nb_confidence ) 
+    classification, reasoning = classifier.classify(email_text, nb_confidence)
+    spam_score = classifier.calculate_spam_score(EmailFeatures)
     end_time = time.perf_counter()  # Stop the timer
     elapsed_time = end_time - start_time
     return classification, spam_score, reasoning, elapsed_time

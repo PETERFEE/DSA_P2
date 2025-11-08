@@ -19,7 +19,10 @@ def naive_bayes(message):
     probs = model.predict_proba(X_new)
     label = preds[0]                       # e.g., 0 or 1
     confidence = float(np.max(probs[0]))   #  force Python float
+    if label == "spam":
+        return label, confidence
+    else:
+        return label, (1.0 - confidence)
     #print(f"Message: {message}")
     #print(f"Predicted label: {label} (confidence: {confidence:.3f})")
     # here: call to amaan and rohan function
-    return label, confidence

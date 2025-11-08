@@ -1,64 +1,59 @@
 // popup.js
-// This function sends email text to Flask server for classification
 async function analyzeEmailText(textToAnalyze) {
-  const resultElement = document.getElementById('result');
-  const reasoningElement = document.getElementById('reasoning');
-  const compileTimeElement = document.getElementById('compile-time'); // New element for time
+  const dtSection = document.getElementById('decision-tree-section');
+  const rfSection = document.getElementById('rule-filter-section');
+  const dtResult = document.getElementById('dt-result');
+  const dtReasoning = document.getElementById('dt-reasoning');
+  const dtTime = document.getElementById('dt-compile-time');
+  const rfResult = document.getElementById('rf-result');
+  const rfTime = document.getElementById('rf-compile-time');
 
   // Reset UI
-  resultElement.style.display = "block";
-  reasoningElement.style.display = "none";
-  compileTimeElement.style.display = "none";
-  resultElement.textContent = "Analyzing...";
-  resultElement.className = "";
-  compileTimeElement.textContent = "";
-
-  const hasName = /hi\s+\w+/i.test(textToAnalyze);
+  dtSection.style.display = "none";
+  rfSection.style.display = "none";
+  dtResult.textContent = "Analyzing...";
+  dtResult.className = "";
+  rfResult.textContent = "";
+  rfResult.className = "";
 
   try {
     const response = await fetch('http://127.0.0.1:5000/classify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: textToAnalyze,
-        has_name: hasName
-      })
+      body: JSON.stringify({ email: textToAnalyze })
     });
 
     if (!response.ok) throw new Error(`Server error: ${response.status}`);
 
     const result = await response.json();
 
-    // Show main classification
-    resultElement.textContent = `Result: ${result.classification.toUpperCase()} (Score: ${result.spam_score.toFixed(2)})`;
-    resultElement.className = result.classification === "spam" ? "spam" : "safe";
+    // ----- Decision Tree Section -----
+    const dt = result.decision_tree;
+    dtSection.style.display = "block";
+    dtResult.textContent = `Result: ${dt.classification.toUpperCase()} (Score: ${dt.spam_score.toFixed(2)})`;
+    dtResult.className = dt.classification === "spam" ? "spam" : "safe";
 
-    // Show reasoning if available
-    if (result.reasoning) {
-      const reasons = [];
-
-      if (result.reasoning.nb_prediction)
-        reasons.push(`Naive Bayes says: ${result.reasoning.nb_prediction} (confidence: ${(result.reasoning.nb_confidence * 100).toFixed(1)}%)`);
-
-      if (result.reasoning.decision_path && result.reasoning.decision_path.length > 0)
-        reasons.push(...result.reasoning.decision_path.map(step => `• ${step}`));
-
-      if (reasons.length > 0) {
-        reasoningElement.innerHTML = `<strong>Reasoning:</strong><br>${reasons.join('<br>')}`;
-        reasoningElement.style.display = "block";
-      }
+    // Reasoning
+    if (dt.reasoning && dt.reasoning.decision_path) {
+      dtReasoning.innerHTML = `<strong>Reasoning:</strong><br>${dt.reasoning.decision_path.map(step => "• " + step).join("<br>")}`;
+    } else {
+      dtReasoning.textContent = "";
     }
 
-    // Show compile time
-    if (result.Complie_time !== undefined) {
-      compileTimeElement.textContent = `Execution Time: ${(result.Complie_time * 1000).toFixed(2)} ms`;
-      compileTimeElement.style.display = "block";
-    }
+    // Compile time
+    dtTime.textContent = `Execution Time: ${(dt.compile_time * 1000).toFixed(2)} ms`;
+
+    // ----- Rule Filter Section -----
+    const rf = result.rule_filter;
+    rfSection.style.display = "block";
+    rfResult.textContent = `Result: ${rf.classification.toUpperCase()} (Score: ${rf.spam_score.toFixed(2)})`;
+    rfResult.className = rf.classification.toLowerCase() === "spam" ? "spam" : "safe";
+    rfTime.textContent = `Execution Time: ${(rf.compile_time).toFixed(2)} ms`;
 
   } catch (err) {
-    resultElement.textContent = "Error connecting to server.";
-    resultElement.className = "spam";
     console.error(err);
+    dtResult.textContent = "Error connecting to server.";
+    dtResult.className = "spam";
   }
 }
 

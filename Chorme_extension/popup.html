@@ -69,9 +69,23 @@
   <h2>Spam Scanner</h2>
   <textarea id="text-to-check" placeholder="Paste email text here..."></textarea>
   <button id="scanButton">Scan Email</button>
-  <div id="result"></div>
-  <div id="reasoning"></div>
-  <div id="compile-time"></div> <!-- New element for execution time -->
+    <div id="results-container" style="margin-top: 12px;">
+    <!-- Decision Tree Result -->
+    <div id="decision-tree-section" style="display:none;">
+      <h4>Decision Tree Result</h4>
+      <div id="dt-result" class=""></div>
+      <div id="dt-reasoning"></div>
+      <div id="dt-compile-time"></div>
+    </div>
+
+    <!-- Rule Filter Result -->
+    <div id="rule-filter-section" style="display:none; margin-top:12px;">
+      <h4>Rule Filter Result</h4>
+      <div id="rf-result" class=""></div>
+      <div id="rf-compile-time"></div>
+    </div>
+  </div>
+
 
   <script src="popup.js"></script>
 </body>
