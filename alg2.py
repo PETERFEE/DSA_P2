@@ -25,7 +25,7 @@ def ruleFilter(body, confidence):
             if index != -1:
                 url = url[:index]
         if any(ord(char) > 127 for char in url):
-            return "spam", 1.0, round((1000 * (time.perf_counter() - timestamp)), 2)
+            return "SPAM", 1.0, round((1000 * (time.perf_counter() - timestamp)), 2)
         elif any(char.isdigit() for char in url.split('.')[-2].lower()):
             spamProbability += 0.5
         elif url.split('.')[-1].lower() in ('xyz', 'top', 'tk', 'pw', 'tk', 'ga', 'ml', 'work', 'download', 'win', 'zip', 'bar', 'party', 'info', 'ru', 'ws', 'cm'):
@@ -55,8 +55,8 @@ def ruleFilter(body, confidence):
 
     if not thirdPass:
         if max(spamProbability, confidence) >= 0.5:
-            return "spam", round(spamProbability, 2), round((1000 * (time.perf_counter() - timestamp)), 2)
-        return "ham", round(spamProbability, 2), round((1000 * (time.perf_counter() - timestamp)), 2)
+            return "SPAM", round(spamProbability, 2), round((1000 * (time.perf_counter() - timestamp)), 2)
+        return "HAM", round(spamProbability, 2), round((1000 * (time.perf_counter() - timestamp)), 2)
 
     spamPhrases = ["win big", "win money", "claim prize", "free money", "easy money",
                     "get paid", "earn money", "double income", "limited time", "limited offer",
@@ -81,9 +81,9 @@ def ruleFilter(body, confidence):
     spamProbability = min(1.0, spamProbability)
 
     if spamProbability >= 0.5 and confidence >= 0.2 or confidence >= 0.8 and spamProbability <= 0.5:
-        return "spam", round(max(spamProbability, confidence), 2), round((1000 * (time.perf_counter() - timestamp)), 2)
+        return "SPAM", round(max(spamProbability, confidence), 2), round((1000 * (time.perf_counter() - timestamp)), 2)
     else:
-        return "ham", round(spamProbability, 2), round((1000 * (time.perf_counter() - timestamp)), 2)
+        return "HAM", round(spamProbability, 2), round((1000 * (time.perf_counter() - timestamp)), 2)
 
 
 #if __name__ == "__main__":
