@@ -13,4 +13,8 @@ while True:
     label = preds[0]
     confidence = np.max(probs[0])
     print(f"Message: {message}")
-    print(f"Predicted label: {label} (confidence: {confidence:.3f})")
+    #print(f"Predicted label: {label} (confidence: {confidence:.3f})")
+    if label == "spam":
+        print(f"Spam probability: {confidence * 100:.2f}%")
+    else:
+        print(f"Spam probability: {100 - confidence * 100:.2f}%")
