@@ -8,7 +8,7 @@ def ruleFilter(body, confidence):
     words = body.split()
     spamProbability = 0.0
     urls = [a or b for a, b in re.findall(r"(\bhttps?:\/\/[^\s,)]+)|(\b[-a-zA-Z0-9.\p{L}]+\.[a-zA-Z\p{L}]{2,}\b)", body)]
-    if len(urls) > 0 and words < 10:
+    if len(urls) > 0 and len(words) < 10:
         spamProbability += 0.2
 
     for url in urls:

@@ -21,6 +21,7 @@
       border-radius: 8px;
       padding: 8px;
       font-size: 14px;
+      resize: vertical;
     }
     button {
       margin-top: 10px;
@@ -32,6 +33,9 @@
       border-radius: 8px;
       cursor: pointer;
       font-size: 15px;
+    }
+    #results-container {
+      margin-top: 12px;
     }
     #result {
       margin-top: 10px;
@@ -47,33 +51,29 @@
       background-color: #ddffdd;
       color: #0a8a0a;
     }
-    #reasoning {
-      margin-top: 8px;
-      font-size: 13px;
-      color: #444;
+    #dt-reasoning, #rf-compile-time, #dt-compile-time {
+      margin-top: 6px;
+      font-size: 12px;
+      color: #555;
+    }
+    #dt-reasoning {
       background-color: #fff;
       border-left: 3px solid #007bff;
       padding: 8px;
       border-radius: 4px;
-      display: none;
-    }
-    #compile-time {
-      margin-top: 6px;
-      font-size: 12px;
-      color: #555;
-      display: none;
     }
   </style>
 </head>
 <body>
   <h2>Spam Scanner</h2>
-  <textarea id="text-to-check" placeholder="Paste email text here..."></textarea>
+  <textarea id="text-to-check" placeholder="(Optional) Paste email text here..."></textarea>
   <button id="scanButton">Scan Email</button>
-    <div id="results-container" style="margin-top: 12px;">
+
+  <div id="results-container">
     <!-- Decision Tree Result -->
     <div id="decision-tree-section" style="display:none;">
       <h4>Decision Tree Result</h4>
-      <div id="dt-result" class=""></div>
+      <div id="dt-result"></div>
       <div id="dt-reasoning"></div>
       <div id="dt-compile-time"></div>
     </div>
@@ -81,11 +81,10 @@
     <!-- Rule Filter Result -->
     <div id="rule-filter-section" style="display:none; margin-top:12px;">
       <h4>Rule Filter Result</h4>
-      <div id="rf-result" class=""></div>
+      <div id="rf-result"></div>
       <div id="rf-compile-time"></div>
     </div>
   </div>
-
 
   <script src="popup.js"></script>
 </body>

@@ -56,9 +56,39 @@ async function analyzeEmailText(textToAnalyze) {
     dtResult.className = "spam";
   }
 }
+document.getElementById('scanButton').addEventListener('click', async () => {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-// Attach click handler
-document.getElementById('scanButton').addEventListener('click', () => {
-  const textInput = document.getElementById('text-to-check').value.trim();
-  analyzeEmailText(textInput);
+  if (!tab || !tab.url.startsWith("https://mail.google.com/")) {
+    alert("Please open an email in Gmail first.");
+    return;
+  }
+
+  // Inject getCleanedEmailBody into Gmail page
+  const [{ result }] = await chrome.scripting.executeScript({
+    target: { tabId: tab.id },
+    func: getCleanedEmailBody,
+  });
+
+  if (!result) {
+    alert("Could not extract email body.");
+    return;
+  }
+
+  // Now analyze the extracted text
+  analyzeEmailText(result);
 });
+
+// Function runs inside Gmail tab context
+function getCleanedEmailBody() {
+  const emailDiv =
+    document.querySelector('div[role="main"] div.a3s') ||
+    document.querySelector('div[role="main"]');
+
+  if (!emailDiv) return "";
+
+  let text = emailDiv.innerText || "";
+  text = text.replace(/[^\x09\x0A\x0D\x20-\x7E\u00A0-\u00FF]/g, "");
+  text = text.replace(/\s{3,}/g, "\n\n").trim();
+  return text;
+}
