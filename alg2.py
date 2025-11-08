@@ -6,10 +6,11 @@ import math
 def ruleFilter(body, confidence):
     timestamp = time.perf_counter()
     words = body.split()
+    spamProbability = 0.0
 
     urls = [a or b for a, b in re.findall(r"(\bhttps?:\/\/[^\s,)]+)|(\b[-a-zA-Z0-9.\p{L}]+\.[a-zA-Z\p{L}]{2,}\b)", body)]
-
-    spamProbability = 0.0
+    if len(urls) > 0 and words < 10:
+        spamProbability += 0.2
 
     for url in urls:
         if url.startswith("http://"):
@@ -79,6 +80,11 @@ def ruleFilter(body, confidence):
                 occurrence += 1
     spamProbability += min(0.9, scale * math.log1p(occurrence))
     spamProbability = min(1.0, spamProbability)
+
+    if spamProbability <= 0.05:
+        return "HAM", round(spamProbability, 2), round((1000 * (time.perf_counter() - timestamp)), 2)
+    elif confidence >= 0.98:
+        return "SPAM", round(max(spamProbability, confidence), 2), round((1000 * (time.perf_counter() - timestamp)), 2)
 
     if spamProbability >= 0.5 and confidence >= 0.2 or confidence >= 0.8 and spamProbability >= 0.2:
         return "SPAM", round(max(spamProbability, confidence), 2), round((1000 * (time.perf_counter() - timestamp)), 2)
