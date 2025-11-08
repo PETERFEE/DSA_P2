@@ -29,7 +29,7 @@ def ruleFilter(body, confidence):
         elif any(char.isdigit() for char in url.split('.')[-2].lower()):
             spamProbability += 0.5
         elif url.split('.')[-1].lower() in ('xyz', 'top', 'tk', 'pw', 'tk', 'ga', 'ml', 'work', 'download', 'win', 'zip', 'bar', 'party', 'info', 'ru', 'ws', 'cm'):
-            spamProbability += 0.5
+            spamProbability += 0.25
 
     spamWords = {"urgent": 0, "sale": 0, "win": 0, "trial": 0, "guaranteed": 0, "cash": 0, "act": 0, "claim": 0, "hurry": 0, "verify": 0, "congratulations": 0, "income": 0, "investment": 0}
     spamWeight = {"urgent": 3, "sale": 2, "win": 3, "trial": 1, "guaranteed": 2, "cash": 2, "act": 2, "claim": 3, "hurry": 4, "verify": 1, "congratulations": 1, "income": 1, "investment": 2}
@@ -80,7 +80,7 @@ def ruleFilter(body, confidence):
     spamProbability += min(0.9, scale * math.log1p(occurrence))
     spamProbability = min(1.0, spamProbability)
 
-    if spamProbability >= 0.5 and confidence >= 0.2 or confidence >= 0.8 and spamProbability <= 0.5:
+    if spamProbability >= 0.5 and confidence >= 0.2 or confidence >= 0.8 and spamProbability >= 0.2:
         return "SPAM", round(max(spamProbability, confidence), 2), round((1000 * (time.perf_counter() - timestamp)), 2)
     else:
         return "HAM", round(spamProbability, 2), round((1000 * (time.perf_counter() - timestamp)), 2)
